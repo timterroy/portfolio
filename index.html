@@ -145,10 +145,8 @@
     .proj-figure.medium img{height:200px; width:auto; max-width:none;}
     .proj-figure.large{max-width:none;}
     .proj-figure.large img{height:205px; width:auto; max-width:none;}
-    /* PIKE diagram: match the row's other photos in height (160px) without
-       distorting it -- crop the sides instead of scaling it down. */
-    .pike-fig{max-width:none;}
-    .proj-figure.pike-fig img{height:160px; width:190px; max-width:none; object-fit:cover; object-position:center;}
+    /* PIKE diagram: sized like the row's other "medium" photos, kept
+       fully proportional (no cropping). */
     /* ATR cell mounting photo: a bit too narrow -- stretch its width only,
        height stays matched to its row siblings. */
     .proj-figure.atr-fig{max-width:none;}
