@@ -568,6 +568,10 @@
         el.classList.add('lang-fade-in');
       });
       syncCaptionWidths();
+      // Reset every photo carousel back to its first slide on a language
+      // switch, so a gallery left scrolled to the end doesn't stay stuck
+      // there under the new language.
+      document.querySelectorAll('.gallery-row').forEach(row => { row.scrollLeft = 0; });
       // We deliberately never remove "lang-fade-in" here: its held end state
       // (opacity:1, translateY(0)) is identical to the page's own fadeIn
       // animation end state, so leaving it on is invisible. Removing it would
@@ -637,6 +641,12 @@
   // horizontal scroll position: the dot matching whichever "slide" (direct
   // child of .gallery-row -- a figure or a gallery-col) is closest to the
   // left edge of the visible area gets marked active.
+  // A plain 'scroll' event listener isn't reliable enough for this on some
+  // mobile browsers (iOS Safari in particular can fire very few scroll
+  // events during a fast momentum swipe, jumping straight from the first to
+  // the last state and skipping middle dots entirely). Polling on every
+  // animation frame instead guarantees we catch every intermediate position.
+  const galleryDotWatchers = [];
   document.querySelectorAll('.gallery-row-wrap').forEach(wrap => {
     const row = wrap.querySelector('.gallery-row');
     const dots = wrap.querySelectorAll('.gallery-dots .dot');
@@ -663,9 +673,13 @@
       });
       dots.forEach((d, i) => d.classList.toggle('active', i === closest));
     }
-    row.addEventListener('scroll', updateActiveDot, { passive: true });
     updateActiveDot();
+    galleryDotWatchers.push(updateActiveDot);
   });
+  (function pollGalleryDots(){
+    galleryDotWatchers.forEach(fn => fn());
+    requestAnimationFrame(pollGalleryDots);
+  })();
 </script>
 </body>
 </html>
