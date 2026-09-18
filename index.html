@@ -637,19 +637,19 @@
       row.style.paddingRight = '';
       const scrollable = row.scrollWidth > row.clientWidth + 2;
       wrap.classList.toggle('has-scroll', scrollable);
-      // When a row genuinely scrolls, give it enough left/right padding for
-      // the FIRST and LAST slide to each reach a fully centered position
-      // (like the ones in between naturally can). Without this, narrow
-      // photos never get a real "turn" at center -- several stay visible
-      // at once the whole time, so a scroll/swipe can glide straight past
-      // one without it ever being clearly "the" current slide.
+      // When a row genuinely scrolls, give it a bit of extra left/right
+      // padding so the FIRST and LAST slide get real breathing room to
+      // become "the" centered one too, not just the ones in between.
+      // Capped well below true full-centering (half the viewport) --
+      // that looked correct for detection but buried each photo in a sea
+      // of empty space on narrow mobile screens.
       if(scrollable){
         const first = row.firstElementChild;
         const last = row.lastElementChild;
         if(first && last){
           const half = row.clientWidth / 2;
-          const padLeft = Math.max(24, half - first.getBoundingClientRect().width / 2);
-          const padRight = Math.max(24, half - last.getBoundingClientRect().width / 2);
+          const padLeft = Math.min(Math.max(24, half - first.getBoundingClientRect().width / 2), 90);
+          const padRight = Math.min(Math.max(24, half - last.getBoundingClientRect().width / 2), 90);
           row.style.paddingLeft = padLeft + 'px';
           row.style.paddingRight = padRight + 'px';
         }
