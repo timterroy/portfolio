@@ -104,7 +104,8 @@
   .gallery-fade{display:none;}
   .gallery-hint-bar{display:none;}
   @media (max-width:760px){
-    .gallery-row{overflow-x:auto; justify-content:flex-start; padding:0 24px 6px;}
+    .gallery-row{overflow-x:auto; justify-content:flex-start; padding:0 24px 6px; scroll-snap-type:x proximity;}
+    .gallery-row > *{scroll-snap-align:center;}
     .gallery-row-wrap.has-scroll .gallery-fade{display:block; position:absolute; top:0; right:0; bottom:26px; width:32px; background:linear-gradient(to right, transparent, var(--paper-dim)); pointer-events:none;}
     .gallery-row-wrap.has-scroll .gallery-hint-bar{
       display:flex; flex-direction:column; align-items:center; gap:6px;
@@ -135,7 +136,7 @@
   .gallery-col .proj-figure img{height:155px;}
   .proj-figure figcaption{font-size:11px; color:var(--ink); margin-top:7px; text-align:center; max-width:320px; line-height:1.35;}
   .proj-figure.wide figcaption{max-width:540px;}
-  @media (max-width:760px){ .proj-figure img, .proj-figure video, .proj-figure.wide img, .proj-figure.large img, .proj-figure.medium img, .gallery-col .proj-figure img{height:140px;} }
+  @media (max-width:760px){ .proj-figure img, .proj-figure video, .proj-figure.wide img, .proj-figure.large img, .proj-figure.medium img, .gallery-col .proj-figure img{height:160px;} }
 
   .pcr-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border-top:1px solid var(--line);}
   .pcr-col{background:#fff; padding:18px 20px;}
@@ -629,8 +630,30 @@
     document.querySelectorAll('.gallery-row-wrap').forEach(wrap => {
       const row = wrap.querySelector('.gallery-row');
       if(!row) return;
+      // Reset to the CSS default before measuring, so repeated calls (on
+      // resize, language switch, etc.) start from a stable baseline instead
+      // of compounding a previous computed value.
+      row.style.paddingLeft = '';
+      row.style.paddingRight = '';
       const scrollable = row.scrollWidth > row.clientWidth + 2;
       wrap.classList.toggle('has-scroll', scrollable);
+      // When a row genuinely scrolls, give it enough left/right padding for
+      // the FIRST and LAST slide to each reach a fully centered position
+      // (like the ones in between naturally can). Without this, narrow
+      // photos never get a real "turn" at center -- several stay visible
+      // at once the whole time, so a scroll/swipe can glide straight past
+      // one without it ever being clearly "the" current slide.
+      if(scrollable){
+        const first = row.firstElementChild;
+        const last = row.lastElementChild;
+        if(first && last){
+          const half = row.clientWidth / 2;
+          const padLeft = Math.max(24, half - first.getBoundingClientRect().width / 2);
+          const padRight = Math.max(24, half - last.getBoundingClientRect().width / 2);
+          row.style.paddingLeft = padLeft + 'px';
+          row.style.paddingRight = padRight + 'px';
+        }
+      }
     });
   }
   window.addEventListener('load', updateGalleryScrollHints);
@@ -639,13 +662,11 @@
 
   // Keep each gallery's pagination dots in sync with the row's current
   // horizontal scroll position: the dot matching whichever "slide" (direct
-  // child of .gallery-row -- a figure or a gallery-col) currently has the
-  // MOST overlap with the visible area gets marked active. This is more
-  // robust than a nearest-left-edge comparison: a narrow slide sandwiched
-  // between wider ones only "wins" a thin sliver of scroll positions under
-  // a nearest-edge approach, which a fast swipe can skip over even when
-  // polled every frame. Overlap-based selection gives every slide a fair,
-  // width-proportional zone, so a narrow slide can't be skipped.
+  // child of .gallery-row -- a figure or a gallery-col) is currently
+  // closest to the CENTER of the visible area gets marked active. This
+  // pairs with the centering padding above (each slide, including the
+  // first and last, can reach a truly centered position), so there's
+  // always one clear "current" slide as you scroll, even a narrow one.
   const galleryDotWatchers = [];
   document.querySelectorAll('.gallery-row-wrap').forEach(wrap => {
     const row = wrap.querySelector('.gallery-row');
@@ -654,12 +675,14 @@
     const slides = Array.from(row.children);
     function updateActiveDot(){
       const rowRect = row.getBoundingClientRect();
+      const rowCenter = (rowRect.left + rowRect.right) / 2;
       let best = 0;
-      let bestOverlap = -1;
+      let bestDist = Infinity;
       slides.forEach((slide, i) => {
         const r = slide.getBoundingClientRect();
-        const overlap = Math.min(r.right, rowRect.right) - Math.max(r.left, rowRect.left);
-        if(overlap > bestOverlap){ bestOverlap = overlap; best = i; }
+        const slideCenter = (r.left + r.right) / 2;
+        const dist = Math.abs(slideCenter - rowCenter);
+        if(dist < bestDist){ bestDist = dist; best = i; }
       });
       dots.forEach((d, i) => d.classList.toggle('active', i === best));
     }
