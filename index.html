@@ -639,13 +639,13 @@
 
   // Keep each gallery's pagination dots in sync with the row's current
   // horizontal scroll position: the dot matching whichever "slide" (direct
-  // child of .gallery-row -- a figure or a gallery-col) is closest to the
-  // left edge of the visible area gets marked active.
-  // A plain 'scroll' event listener isn't reliable enough for this on some
-  // mobile browsers (iOS Safari in particular can fire very few scroll
-  // events during a fast momentum swipe, jumping straight from the first to
-  // the last state and skipping middle dots entirely). Polling on every
-  // animation frame instead guarantees we catch every intermediate position.
+  // child of .gallery-row -- a figure or a gallery-col) currently has the
+  // MOST overlap with the visible area gets marked active. This is more
+  // robust than a nearest-left-edge comparison: a narrow slide sandwiched
+  // between wider ones only "wins" a thin sliver of scroll positions under
+  // a nearest-edge approach, which a fast swipe can skip over even when
+  // polled every frame. Overlap-based selection gives every slide a fair,
+  // width-proportional zone, so a narrow slide can't be skipped.
   const galleryDotWatchers = [];
   document.querySelectorAll('.gallery-row-wrap').forEach(wrap => {
     const row = wrap.querySelector('.gallery-row');
@@ -653,25 +653,15 @@
     if(!row || !dots.length) return;
     const slides = Array.from(row.children);
     function updateActiveDot(){
-      const maxScroll = row.scrollWidth - row.clientWidth;
-      // maxScroll <= 0 happens both when the row is genuinely too short to
-      // scroll AND when it's simply not visible yet (e.g. still on another
-      // tab, so it measures 0x0) -- those are very different situations.
-      // Only treat it as "scrolled to the end" when there's a real, positive
-      // scroll range and we're actually near the end of it; otherwise default
-      // to the normal closest-slide computation, which correctly resolves to
-      // the first slide while scrollLeft is still 0.
-      if(maxScroll > 0 && row.scrollLeft >= maxScroll - 2){
-        dots.forEach((d, i) => d.classList.toggle('active', i === slides.length - 1));
-        return;
-      }
-      let closest = 0;
-      let closestDist = Infinity;
+      const rowRect = row.getBoundingClientRect();
+      let best = 0;
+      let bestOverlap = -1;
       slides.forEach((slide, i) => {
-        const dist = Math.abs(slide.offsetLeft - row.scrollLeft);
-        if(dist < closestDist){ closestDist = dist; closest = i; }
+        const r = slide.getBoundingClientRect();
+        const overlap = Math.min(r.right, rowRect.right) - Math.max(r.left, rowRect.left);
+        if(overlap > bestOverlap){ bestOverlap = overlap; best = i; }
       });
-      dots.forEach((d, i) => d.classList.toggle('active', i === closest));
+      dots.forEach((d, i) => d.classList.toggle('active', i === best));
     }
     updateActiveDot();
     galleryDotWatchers.push(updateActiveDot);
