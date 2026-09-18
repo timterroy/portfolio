@@ -151,6 +151,7 @@
     .proj-figure.pike-fig img{height:160px; width:190px; max-width:none; object-fit:cover; object-position:center;}
     /* ATR cell mounting photo: a bit too narrow -- stretch its width only,
        height stays matched to its row siblings. */
+    .proj-figure.atr-fig{max-width:none;}
     .proj-figure.atr-fig img{width:260px; max-width:none;}
   }
 
@@ -690,12 +691,6 @@
     if(!row) return;
     const slides = Array.from(row.children);
     function updateActiveDot(){
-      // Hide the "more to scroll" fade once we're genuinely at the end --
-      // it was staying visible even at the last photo, wrongly suggesting
-      // there was still more to swipe to.
-      const maxScroll = row.scrollWidth - row.clientWidth;
-      wrap.classList.toggle('at-end', maxScroll <= 0 || row.scrollLeft >= maxScroll - 2);
-      if(!dots.length) return;
       const rowRect = row.getBoundingClientRect();
       const rowCenter = (rowRect.left + rowRect.right) / 2;
       let best = 0;
@@ -706,6 +701,12 @@
         const dist = Math.abs(slideCenter - rowCenter);
         if(dist < bestDist){ bestDist = dist; best = i; }
       });
+      // Hide the "more to scroll" fade once the LAST slide is the one
+      // currently centered -- tied to the same computation as the dots
+      // themselves, rather than a separate raw scrollLeft/maxScroll check,
+      // which could disagree with the dots when scroll-snap settles just
+      // short of the theoretical maximum.
+      wrap.classList.toggle('at-end', slides.length > 0 && best === slides.length - 1);
       dots.forEach((d, i) => d.classList.toggle('active', i === best));
     }
     updateActiveDot();
